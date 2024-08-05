@@ -202,7 +202,7 @@ def display_indicators(level, view):
 
         if view == "Tableau":
             st.subheader("Tableau des Indicateurs Nationaux")
-            num_days = (combined_data['submission_date'].max() - combined_data['submission_date'].min()).days
+            num_days = (combined_data['submission_date'].max() - combined_data['submission_date'].min()).days +1
             total_expra = combined_data['expra'].sum()
             total_recensement = (combined_data['expra'] == 0).sum()
             daily_expra = combined_data.groupby('submission_date')['expra'].sum()
