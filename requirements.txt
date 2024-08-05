@@ -1,6 +1,7 @@
 streamlit
 pandas
+geopandas
+numpy
 plotly
 folium
-geopandas
-bcrypt
+streamlit_folium
