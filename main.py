@@ -1,5 +1,6 @@
 # main.py
 import streamlit as st
+from PIL import Image
 import pandas as pd
 import geopandas as gpd
 import numpy as np
@@ -898,12 +899,44 @@ def display_indicators(level, view):
             st.subheader("Disponible en Zoom Régional et Provincial")
 
 # Fonction principale
+
 def main():
     # if not login():
     #     return
+    
+    # Custom CSS to style the title
+    st.markdown(
+        """
+        <style>
+        .big-bold-font {
+            font-size:50px !important;
+            font-weight: bold !important;
+        }
+        .center-bold-font {
+            text-align: center;
+            font-weight: bold;
+            font-size: 20px;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+    
+    # Create a layout with two columns
+    col1, col2 = st.columns([1, 3])
 
-    st.title("Baromètre EDH 2024")
-    st.write("Pilotage Stratégique de l'Enquête sur le Développement Humain auprès des Ménages 2024")
+    # Load your logo
+    logo = Image.open('ondh.png')
+
+    # Display the logo in the left column
+    with col1:
+        st.image(logo, width=150)
+
+    # You can use the right column for a title or other content
+    with col2:
+        st.markdown('<p class="big-bold-font">Baromètre EDH 2024</p>', unsafe_allow_html=True)
+    
+    st.markdown('<p class="center-bold-font">Pilotage Stratégique de l\'Enquête sur le Développement Humain auprès des Ménages 2024</p>', unsafe_allow_html=True)
     
     st.sidebar.title("Filtres")
     #niveau = st.sidebar.radio("Niveau", ["National", "Régions", "Provinces"])
