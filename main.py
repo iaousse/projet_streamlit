@@ -12,7 +12,7 @@ from streamlit_folium import folium_static
 #import bcrypt
 
 # Configuration de la page
-st.set_page_config(page_title="Tableau de Bord Performance Enquête Menage DH", layout="wide")
+st.set_page_config(page_title="Baromètre EDH 2024", layout="wide")
 
 # Fonction d'authentification
 # def hash_password(password):
@@ -60,10 +60,12 @@ def load_data():
     geojson_provinces = gpd.read_file('data/updated_provinces.json')
     geojson_regions = gpd.read_file('data/updated_maroc.geojson')
     grappes_regions = pd.read_parquet('data/grappes_regions.parquet')
-    return combined_data, provinces_data, geojson_provinces, geojson_regions, grappes_regions
+    circles_data = pd.read_parquet('data/cercles.parquet')  # Ajouter les données des cercles
+    return combined_data, provinces_data, geojson_provinces, geojson_regions, grappes_regions, circles_data
 
 # Chargement des données une seule fois
-combined_data, provinces_data, geojson_provinces, geojson_regions, grappes_regions = load_data()
+combined_data, provinces_data, geojson_provinces, geojson_regions, grappes_regions, circles_data = load_data()
+
 
 def generate_province_map(data, column, title):
     # Assurez-vous que toutes les provinces du geojson sont présentes dans les données
@@ -197,11 +199,11 @@ def generate_fixed_map(data, column, title):
 
 # Fonction principale pour afficher les indicateurs
 def display_indicators(level, view):
-    if level == "National":
-        st.title("Indicateurs de Performance Globales")
+    if level == "Vision Macroscopique":
+        st.title("Chiffres Clés")
 
         if view == "Tableau":
-            st.subheader("Tableau des Indicateurs Nationaux")
+            st.subheader("")
             num_days = (combined_data['submission_date'].max() - combined_data['submission_date'].min()).days +1
             total_expra = combined_data['expra'].sum()
             total_recensement = (combined_data['expra'] == 0).sum()
@@ -212,21 +214,21 @@ def display_indicators(level, view):
 
             
             national_indicators = {
-                "Nombre de jours": f"{num_days} jours",
-                "Progres Globales Enquêtes Ménage": f"{global_prog_enq:.2f}%",
-                "Progres Globales Grappes": f"{global_prog_grap:.2f}%",
-                "Total Grappes": f"{total_grap} grappes",
-                "Total Enquêtes Ménage": f"{total_expra} enquêtes",
-                "Total Recensement": f"{total_recensement} enquêtes",
-                "Moyenne Enquêtes Ménage par Jour": f"{daily_expra.mean():.0f} enquêtes ménage par jour",
-                "Écart-type Enquêtes Ménage par Jour": f"{daily_expra.std():.2f}"
+                "Durée de l'opération": f"{num_days} jours",
+                "Taux de réalisation des enquêtes ménage": f"{global_prog_enq:.2f}%",
+                "Taux de couverture des grappes": f"{global_prog_grap:.2f}%",
+                "Grappes enquêtées": f"{total_grap} grappes",
+                "Enquêtes ménages": f"{total_expra} enquêtes",
+                "Recensements": f"{total_recensement} enquêtes",
+                "Cadence quotidienne moyenne": f"{daily_expra.mean():.0f} enquêtes ménage par jour",
+                "Variation de la cadence (Écart-type)": f"{daily_expra.std():.2f}"
             }
             
             df = pd.DataFrame(national_indicators.items(), columns=["Indicateur", "Valeur"]).reset_index(drop=True)
             st.table(df)
 
-        elif view == "Graphique":
-            st.subheader("Indicateurs Nationaux en Dataviz")
+        elif view == "Datavisualisation":
+            #st.subheader("Focus Visuel")
 
             # Calcul des indicateurs
             total_enquetes_menage = combined_data['expra'].sum()
@@ -236,55 +238,56 @@ def display_indicators(level, view):
             progress_global_grappes = (total_grappes / 10225) * 100  
 
             # Barres horizontales pour Progrès Globaux
-            st.write("### Progrès Globaux")
+            #st.write("### Progrès Globaux")
             progress_df = pd.DataFrame({
-                'Indicateur': ['Progrès Global Enquêtes Ménage', 'Progrès Global Grappes'],
+                'Indicateur': ['Taux de réalisation des enquêtes ménage', 'Taux de couverture des grappes'],
                 'Pourcentage': [progress_global_enquetes_menage, progress_global_grappes],
                 'Restant': [100 - progress_global_enquetes_menage, 100 - progress_global_grappes]
             })
-            fig_progress = px.bar(progress_df, y='Indicateur', x=['Pourcentage', 'Restant'], orientation='h', title="Progrès Globaux Enquêtes Ménage et Grappes", barmode='stack')
+            fig_progress = px.bar(progress_df, y='Indicateur', x=['Pourcentage', 'Restant'], orientation='h', title="Taux d'Atteinte des Objectifs", barmode='stack')
             fig_progress.update_traces(texttemplate='%{x:.2f}%', textposition='inside')
-            fig_progress.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+            fig_progress.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', title={'x':0.35})
             st.plotly_chart(fig_progress)
 
             # Barres verticales pour Total Enquêtes Ménage et Total Recensement
-            st.write("### Total Enquêtes Ménage et Recensement")
+            #st.write("### Total Enquêtes Ménage et Recensement")
             total_df = pd.DataFrame({
-                'Indicateur': ['Total Enquêtes Ménage', 'Total Recensement'],
+                'Indicateur': ['Enquêtes Ménage', 'Recensements'],
                 'Valeur': [total_enquetes_menage, total_recensement]
             })
-            fig_total = px.bar(total_df, x='Indicateur', y='Valeur', title="Total Enquêtes Ménage et Recensement")
+            fig_total = px.bar(total_df, x='Indicateur', y='Valeur', title="Bilan des Opérations : Enquêtes Ménage et Recensements")
             fig_total.update_traces(texttemplate='%{y}', textposition='outside')
-            fig_total.update_layout(uniformtext_minsize=8, uniformtext_mode='hide')
+            fig_total.update_layout(uniformtext_minsize=8, uniformtext_mode='hide', title={'x':0.35})
             st.plotly_chart(fig_total)
 
             # Evolution des enquêtes ménages, recensement et grappes par jour
-            st.write("### Évolution des Indicateurs par Jour")
+            st.write("### Tendances Journalières")
             combined_data['submission_date'] = pd.to_datetime(combined_data['submission_date'])
             daily_data = combined_data.groupby('submission_date').agg({
                 'expra': ['sum', lambda x: (x == 0).sum()],
                 'grappe': 'nunique'
             }).reset_index()
-            daily_data.columns = ['submission_date', 'Total Enquêtes Ménage', 'Total Recensement', 'Total Grappes']
+            daily_data.columns = ['submission_date', 'Enquêtes Ménage', 'Recensements', 'Grappes']
 
-            evolution_type = st.selectbox("Sélectionnez le type d'évolution", ['Total Enquêtes Ménage', 'Total Recensement', 'Total Grappes'])
-            fig_evolution = px.line(daily_data, x='submission_date', y=evolution_type, title=f"Évolution des {evolution_type} par Jour", labels={'submission_date': 'Date', evolution_type: evolution_type})
+            evolution_type = st.selectbox("Sélectionner l'Indicateur de Suivi", ['Enquêtes Ménage', 'Recensements', 'Grappes'])
+            fig_evolution = px.line(daily_data, x='submission_date', y=evolution_type, title=f"Tendance Journalière : {evolution_type}", labels={'submission_date': 'Date', evolution_type: evolution_type})
 
             # Traduire les dates en français
             fig_evolution.update_layout(
                 xaxis=dict(
                     tickformat="%d-%m-%Y"
-                )
+                ),
+                title={'x':0.35}
             )
             st.plotly_chart(fig_evolution)
 
-        elif view == "Cartographie":
-            st.subheader("Cartographie Disponible au niveau regional et provincial")
+        elif view == "Géo-intelligence":
+            st.subheader("Disponible en Zoom Régional et Provincial")
             
             #st.plotly_chart(fig)
 
-    elif level == "Régions":
-        st.title("Indicateurs par Région")
+    elif level == "Zoom Régional":
+        #st.title("Indicateurs par Région")
 
         region_data = combined_data.groupby('region_label').agg(
             expra_1=('expra', lambda x: (x == 1).sum()),
@@ -308,12 +311,39 @@ def display_indicators(level, view):
         region_data['Proportion ENQUMENAGE/Recensement'] = region_data['Proportion ENQUMENAGE/Recensement'].apply(lambda x: f"{x:.2f}%")
         region_data['Proportion de grappes enquêtées'] = region_data['Proportion de grappes enquêtées'].apply(lambda x: f"{x:.2f}%")
 
-        if view == "Tableau":
-            st.subheader("Tableau des Indicateurs par Région")
-            st.dataframe(region_data)
+        region_data1 = region_data.copy(deep=True)
 
-        elif view == "Graphique":
-            st.subheader("Graphiques des Indicateurs par Région")
+        # Définir les nouveaux noms de colonnes
+        new_columns = [
+            'Région',
+            'Enquêtes Ménage',
+            'Recensements',
+            'Grappes Couvertes',
+            'Taux Enquêtes Ménage/Recensements',
+            'Taux de Couverture des Grappes'
+        ]
+
+        # Créer un dictionnaire de mapping entre anciens et nouveaux noms
+        column_mapping = {
+            'Région': 'Région',
+            'ENQUMENAGE': 'Enquêtes Ménage',
+            'Recensement': 'Recensements',
+            'Nb grappes enquêtées': 'Grappes Couvertes',
+            'Proportion ENQUMENAGE/Recensement': 'Taux Enquêtes Ménage/Recensements',
+            'Proportion de grappes enquêtées': 'Taux de Couverture des Grappes'
+        }
+        # Renommer les colonnes
+        region_data1 = region_data1.rename(columns=column_mapping)
+
+        # Réorganiser les colonnes selon l'ordre spécifié
+        region_data1 = region_data1[new_columns]
+
+        if view == "Tableau":
+            st.subheader("Matrice Comparative des Indicateurs Régionaux")
+            st.dataframe(region_data1)
+
+        elif view == "Datavisualisation":
+            st.subheader("Aperçu Graphique des Indicateurs Régionaux")
 
             # Fonction pour nettoyer et convertir les valeurs en float
             def clean_and_convert(column):
@@ -332,42 +362,45 @@ def display_indicators(level, view):
 
             # Filtre pour sélectionner l'indicateur à afficher
             indicateur = st.selectbox(
-                "Sélectionnez un indicateur à afficher", 
+                "Sélectionner l'Indicateur de Suivi", 
+                
                 [
-                    "Total ENQUMENAGE par Région",
-                    "Total Recensement par Région",
-                    "Nombre de Grappes Enquêtées par Région",
-                    "Nombre Total de Grappes par Région",
-                    "Proportion ENQUMENAGE/Recensement par Région",
-                    "Proportion de Grappes Enquêtées par Région"
+                    "Enquêtes Ménage",
+                    "Recensements",
+                    "Grappes Couvertes",
+                    "Distribution des Grappes",
+                    "Taux Enquêtes Ménage/Recensements",
+                    "Taux de Couverture des Grappes"
                 ]
             )
 
             # Affichage du graphique en fonction de l'indicateur sélectionné
-            if indicateur == "Total ENQUMENAGE par Région":
-                fig = px.bar(region_data, x='Région', y='ENQUMENAGE', title="Total ENQUMENAGE par Région", labels={'ENQUMENAGE': 'ENQUMENAGE'})
+            if indicateur == "Enquêtes Ménage":
+                fig = px.bar(region_data, x='Région', y='ENQUMENAGE', title="Enquêtes Ménage par Région", labels={'ENQUMENAGE': 'ENQUMENAGE'})
                 fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
                     uniformtext_mode='hide', 
                     yaxis=dict(range=[0, region_data['ENQUMENAGE'].max() * y_lim_multiplier]),
+                    title={'x':0.35},
                     separators=', '  # Corrigé ici
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Total Recensement par Région":
-                fig = px.bar(region_data, x='Région', y='Recensement', title="Total Recensement par Région", labels={'Recensement': 'Recensement'})
+            elif indicateur == "Recensements":
+                fig = px.bar(region_data, x='Région', y='Recensement', title="Recensements par Région", labels={'Recensement': 'Recensement'})
                 fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
                     uniformtext_mode='hide', 
                     yaxis=dict(range=[0, region_data['Recensement'].max() * y_lim_multiplier]),
+                    title={'x':0.35},
                     separators=', '  # Corrigé ici
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Nombre de Grappes Enquêtées par Région":
-                fig = px.bar(region_data, x='Région', y='Nb grappes enquêtées', title="Nombre de Grappes Enquêtées par Région", labels={'Nb grappes enquêtées': 'Nb grappes enquêtées'})
+            elif indicateur == "Grappes Couvertes":
+                fig = px.bar(region_data, x='Région', y='Nb grappes enquêtées', title="Grappes Couvertes par Région", labels={'Nb grappes enquêtées': 'Nb grappes enquêtées'})
                 fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
@@ -377,8 +410,8 @@ def display_indicators(level, view):
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Nombre Total de Grappes par Région":
-                fig = px.bar(region_data, x='Région', y='Nb grappes total', title="Nombre Total de Grappes par Région", labels={'Nb grappes total': 'Nb grappes total'})
+            elif indicateur == "Distribution des Grappes":
+                fig = px.bar(region_data, x='Région', y='Nb grappes total', title="Distribution des Grappes par Région", labels={'Nb grappes total': 'Nb grappes total'})
                 fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
@@ -388,8 +421,8 @@ def display_indicators(level, view):
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Proportion ENQUMENAGE/Recensement par Région":
-                fig = px.bar(region_data, x='Région', y='Proportion ENQUMENAGE/Recensement', title="Proportion ENQUMENAGE/Recensement par Région", labels={'Proportion ENQUMENAGE/Recensement': 'Proportion ENQUMENAGE/Recensement (%)'})
+            elif indicateur == "Taux Enquêtes/Recensements":
+                fig = px.bar(region_data, x='Région', y='Proportion ENQUMENAGE/Recensement', title="Taux Enquêtes Ménage/Recensements par Région", labels={'Proportion ENQUMENAGE/Recensement': 'Proportion ENQUMENAGE/Recensement (%)'})
                 fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
@@ -399,8 +432,8 @@ def display_indicators(level, view):
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Proportion de Grappes Enquêtées par Région":
-                fig = px.bar(region_data, x='Région', y='Proportion de grappes enquêtées', title="Proportion de Grappes Enquêtées par Région", labels={'Proportion de grappes enquêtées': 'Proportion de grappes enquêtées (%)'})
+            elif indicateur == "Taux de Couverture des Grappes":
+                fig = px.bar(region_data, x='Région', y='Proportion de grappes enquêtées', title="Taux de Couverture des Grappes par Région", labels={'Proportion de grappes enquêtées': 'Proportion de grappes enquêtées (%)'})
                 fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
@@ -413,13 +446,19 @@ def display_indicators(level, view):
 
 
 
-        elif view == "Cartographie":
-            st.subheader("Cartographie du Taux de Grappes Enquêtées par Région")
+        elif view == "Géo-intelligence":
+            st.subheader("Aperçu Cartographique des Indicateurs Régionaux")
 
             # Filtre pour sélectionner l'indicateur
             indicateur = st.selectbox(
-                "Sélectionnez un indicateur", 
-                ['ENQUMENAGE', 'Recensement', 'Nb grappes enquêtées', 'Proportion ENQUMENAGE/Recensement', 'Proportion de grappes enquêtées']
+                "Sélectionner l'Indicateur de Suivi", 
+                [
+                    "Enquêtes Ménage",
+                    "Recensements",
+                    "Grappes Couvertes",
+                    "Taux Enquêtes Ménage/Recensements",
+                    "Taux de Couverture des Grappes"
+                ]
             )
 
             # Charger le fichier GeoJSON
@@ -433,19 +472,19 @@ def display_indicators(level, view):
             region_data_full = maroc_regions[['region', 'geometry']].merge(region_data, left_on='region', right_on='Région', how='left')
 
             # Convertir les colonnes en valeurs numériques si nécessaire et remplir les valeurs manquantes avec 0
-            region_data_full['ENQUMENAGE'] = pd.to_numeric(region_data_full['ENQUMENAGE'].str.replace(' ', ''), errors='coerce').fillna(0)
-            region_data_full['Recensement'] = pd.to_numeric(region_data_full['Recensement'].str.replace(' ', ''), errors='coerce').fillna(0)
-            region_data_full['Nb grappes enquêtées'] = pd.to_numeric(region_data_full['Nb grappes enquêtées'].str.replace(' ', ''), errors='coerce').fillna(0)
+            region_data_full['Enquêtes Ménage'] = pd.to_numeric(region_data_full['ENQUMENAGE'].str.replace(' ', ''), errors='coerce').fillna(0)
+            region_data_full['Recensements'] = pd.to_numeric(region_data_full['Recensement'].str.replace(' ', ''), errors='coerce').fillna(0)
+            region_data_full['Grappes Couvertes'] = pd.to_numeric(region_data_full['Nb grappes enquêtées'].str.replace(' ', ''), errors='coerce').fillna(0)
             region_data_full['Proportion ENQUMENAGE/Recensement'] = pd.to_numeric(region_data_full['Proportion ENQUMENAGE/Recensement'].str.replace('%', ''), errors='coerce').fillna(0)
-            region_data_full['Proportion de grappes enquêtées'] = pd.to_numeric(region_data_full['Proportion de grappes enquêtées'].str.replace('%', ''), errors='coerce').fillna(0)
+            region_data_full['Taux de Couverture des Grappes'] = pd.to_numeric(region_data_full['Proportion de grappes enquêtées'].str.replace('%', ''), errors='coerce').fillna(0)
 
             # Générer la carte pour l'indicateur sélectionné
             title_map = {
-                'ENQUMENAGE': 'Carte des ENQUMENAGE par Région',
-                'Recensement': 'Carte des Recensements par Région',
-                'Nb grappes enquêtées': 'Carte des Grappes Enquêtées par Région',
-                'Proportion ENQUMENAGE/Recensement': 'Proportion ENQUMENAGE/Recensement par Région',
-                'Proportion de grappes enquêtées': 'Proportion de Grappes Enquêtées par Région'
+                'Enquêtes Ménage': 'Répartition Régionale des Enquêtes Ménage',
+                'Recensements': 'Répartition Régionale des Recensements',
+                'Grappes Couvertes': 'Répartition Régionale des Grappes Enquêtées',
+                'Taux Enquêtes Ménage/Recensements': 'Répartition Régionale du Taux Enquêtes/Recensements',
+                'Taux de Couverture des Grappes': 'Répartition Régionale du Taux de Couverture des Grappes'
             }
 
             fig = generate_fixed_map(region_data_full, indicateur, title_map[indicateur])
@@ -453,11 +492,8 @@ def display_indicators(level, view):
 
 
 
-
-#####
-
-    elif level == "Provinces":
-        st.title("Indicateurs par Province")
+    elif level == "Zoom Provincial":
+        #st.title("Indicateurs par Province")
 
         province_data = combined_data.groupby('province_label').agg(
             expra_1=('expra', lambda x: (x == 1).sum()),
@@ -482,13 +518,44 @@ def display_indicators(level, view):
         province_data['Proportion ENQUMENAGE/Recensement'] = province_data['Proportion ENQUMENAGE/Recensement'].apply(lambda x: f"{x:.2f}%")
         province_data['Proportion de grappes enquêtées'] = province_data['Proportion de grappes enquêtées'].apply(lambda x: f"{x:.2f}%")
 
+        # Créer une copie profonde de province_data
+        province_data1 = province_data.copy(deep=True)
+
+        # Définir les nouveaux noms de colonnes
+        new_columns = [
+            'Province',
+            'Région',
+            'Enquêtes Ménage',
+            'Recensements',
+            'Grappes Couvertes',
+            'Nombre Total de Grappes',
+            'Taux Enquêtes Ménage/Recensements',
+            'Taux de Couverture des Grappes'
+        ]
+
+        # Créer un dictionnaire de mapping entre anciens et nouveaux noms
+        column_mapping = {
+            'Province': 'Province',
+            'Région': 'Région',
+            'ENQUMENAGE': 'Enquêtes Ménage',
+            'Recensement': 'Recensements',
+            'Nb grappes enquêtées': 'Grappes Couvertes',
+            'Nb grappes total': 'Nombre Total de Grappes',
+            'Proportion ENQUMENAGE/Recensement': 'Taux Enquêtes Ménage/Recensements',
+            'Proportion de grappes enquêtées': 'Taux de Couverture des Grappes'
+        }
+
+        # Renommer les colonnes
+        province_data1 = province_data1.rename(columns=column_mapping)
+
+
         if view == "Tableau":
-            st.subheader("Tableau des Indicateurs par Province")
-            st.dataframe(province_data)
+            st.subheader("Matrice Comparative des Indicateurs Provinciaux")
+            st.dataframe(province_data1)
 
 
-        elif view == "Graphique":
-            st.subheader("Graphiques des Indicateurs par Province")
+        elif view == "Datavisualisation":
+            st.subheader("Aperçu Graphique des Indicateurs Provinciaux")
 
             # Fonction pour nettoyer et convertir les valeurs en float
             def clean_and_convert(column):
@@ -506,42 +573,44 @@ def display_indicators(level, view):
             y_lim_multiplier = 1.1
 
             # Filtre pour sélectionner la région
-            regions = ['Tous'] + list(province_data['Région'].unique())
-            selected_region = st.selectbox("Sélectionnez une région", regions)
+            regions = ['Toutes les Régions'] + list(province_data['Région'].unique())
+            selected_region = st.selectbox("Choisir une Région", regions)
 
             # Filtre pour sélectionner l'indicateur à afficher
             indicateur = st.selectbox(
-                "Sélectionnez un indicateur à afficher", 
+                "Sélectionner l'Indicateur de Suivi", 
+                
                 [
-                    "Total ENQUMENAGE par Province",
-                    "Total Recensement par Province",
-                    "Nombre de Grappes Enquêtées par Province",
-                    "Nombre Total de Grappes par Province",
-                    "Proportion ENQUMENAGE/Recensement par Province",
-                    "Proportion de Grappes Enquêtées par Province"
+                    "Enquêtes Ménage",
+                    "Recensements",
+                    "Grappes Couvertes",
+                    "Nombre Total de Grappes",
+                    "Taux Enquêtes Ménage/Recensements",
+                    "Taux de Couverture des Grappes"
                 ]
             )
 
             # Filtrer les données en fonction de la région sélectionnée
-            if selected_region != 'Tous':
+            if selected_region != 'Toutes les Régions':
                 filtered_data = province_data[province_data['Région'] == selected_region]
             else:
                 filtered_data = province_data
 
             # Affichage du graphique en fonction de l'indicateur sélectionné
-            if indicateur == "Total ENQUMENAGE par Province":
-                fig = px.bar(filtered_data, x='Province', y='ENQUMENAGE', title="Total ENQUMENAGE par Province", labels={'ENQUMENAGE': 'ENQUMENAGE'})
+            if indicateur == "Enquêtes Ménage":
+                fig = px.bar(filtered_data, x='Province', y='ENQUMENAGE', title="Enquêtes Ménage par Province", labels={'ENQUMENAGE': 'ENQUMENAGE'})
                 fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
                     uniformtext_mode='hide', 
                     yaxis=dict(range=[0, filtered_data['ENQUMENAGE'].max() * y_lim_multiplier]),
+                    title={'x':0.35},
                     separators=', '  # Corrigé ici
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Total Recensement par Province":
-                fig = px.bar(filtered_data, x='Province', y='Recensement', title="Total Recensement par Province", labels={'Recensement': 'Recensement'})
+            elif indicateur == "Recensements":
+                fig = px.bar(filtered_data, x='Province', y='Recensement', title="Recensements par Province", labels={'Recensement': 'Recensement'})
                 fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
@@ -551,8 +620,8 @@ def display_indicators(level, view):
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Nombre de Grappes Enquêtées par Province":
-                fig = px.bar(filtered_data, x='Province', y='Nb grappes enquêtées', title="Nombre de Grappes Enquêtées par Province", labels={'Nb grappes enquêtées': 'Nb grappes enquêtées'})
+            elif indicateur == "Grappes Couvertes":
+                fig = px.bar(filtered_data, x='Province', y='Nb grappes enquêtées', title="Grappes Couvertes par Province", labels={'Nb grappes enquêtées': 'Nb grappes enquêtées'})
                 fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
@@ -562,7 +631,7 @@ def display_indicators(level, view):
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Nombre Total de Grappes par Province":
+            elif indicateur == "Nombre Total de Grappes":
                 fig = px.bar(filtered_data, x='Province', y='Nb grappes total', title="Nombre Total de Grappes par Province", labels={'Nb grappes total': 'Nb grappes total'})
                 fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
                 fig.update_layout(
@@ -573,8 +642,8 @@ def display_indicators(level, view):
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Proportion ENQUMENAGE/Recensement par Province":
-                fig = px.bar(filtered_data, x='Province', y='Proportion ENQUMENAGE/Recensement', title="Proportion ENQUMENAGE/Recensement par Province", labels={'Proportion ENQUMENAGE/Recensement': 'Proportion ENQUMENAGE/Recensement (%)'})
+            elif indicateur == "Taux Enquêtes Ménage/Recensements":
+                fig = px.bar(filtered_data, x='Province', y='Proportion ENQUMENAGE/Recensement', title="Taux Enquêtes Ménage/Recensements par Province", labels={'Proportion ENQUMENAGE/Recensement': 'Proportion ENQUMENAGE/Recensement (%)'})
                 fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
@@ -584,8 +653,8 @@ def display_indicators(level, view):
                 )
                 st.plotly_chart(fig)
 
-            elif indicateur == "Proportion de Grappes Enquêtées par Province":
-                fig = px.bar(filtered_data, x='Province', y='Proportion de grappes enquêtées', title="Proportion de Grappes Enquêtées par Province", labels={'Proportion de grappes enquêtées': 'Proportion de grappes enquêtées (%)'})
+            elif indicateur == "Taux de Couverture des Grappes":
+                fig = px.bar(filtered_data, x='Province', y='Proportion de grappes enquêtées', title="Taux de Couverture des Grappes par Province", labels={'Proportion de grappes enquêtées': 'Proportion de grappes enquêtées (%)'})
                 fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
                 fig.update_layout(
                     uniformtext_minsize=8, 
@@ -597,56 +666,250 @@ def display_indicators(level, view):
 
 
 
-        elif view == "Cartographie":
-            st.subheader("Cartographie des Indicateurs par Province")
+        elif view == "Géo-intelligence":
+            st.subheader("Cartographie des Indicateurs par Provinciaux")
 
             # Filtre pour sélectionner la région
-            regions = ['Tous'] + list(province_data['Région'].unique())
+            regions = ['Toutes les Régions'] + list(province_data['Région'].unique())
             selected_region = st.selectbox("Sélectionnez une région", regions)
 
             # Filtre pour sélectionner l'indicateur
             indicateur = st.selectbox(
                 "Sélectionnez un indicateur", 
-                ['ENQUMENAGE', 'Recensement', 'Nb grappes enquêtées', 'Proportion ENQUMENAGE/Recensement', 'Proportion de grappes enquêtées']
+                ['Enquêtes Ménage', 
+                 'Recensements', 
+                 'Grappes Couvertes', 
+                 'Taux Enquêtes Ménage/Recensements', 
+                 'Taux de Couverture des Grappes']
             )
 
             # Filtrer les données en fonction de la région sélectionnée
-            if selected_region != 'Tous':
+            if selected_region != 'Toutes les Régions':
                 filtered_data = province_data[province_data['Région'] == selected_region]
             else:
                 filtered_data = province_data.copy()
 
             # Convertir les colonnes en valeurs numériques si nécessaire et remplir les valeurs manquantes avec 0
-            filtered_data['ENQUMENAGE'] = pd.to_numeric(filtered_data['ENQUMENAGE'].str.replace(' ', ''), errors='coerce').fillna(0)
-            filtered_data['Recensement'] = pd.to_numeric(filtered_data['Recensement'].str.replace(' ', ''), errors='coerce').fillna(0)
-            filtered_data['Nb grappes enquêtées'] = pd.to_numeric(filtered_data['Nb grappes enquêtées'].str.replace(' ', ''), errors='coerce').fillna(0)
-            filtered_data['Proportion ENQUMENAGE/Recensement'] = pd.to_numeric(filtered_data['Proportion ENQUMENAGE/Recensement'].str.replace('%', ''), errors='coerce').fillna(0)
-            filtered_data['Proportion de grappes enquêtées'] = pd.to_numeric(filtered_data['Proportion de grappes enquêtées'].str.replace('%', ''), errors='coerce').fillna(0)
+            filtered_data['Enquêtes Ménage'] = pd.to_numeric(filtered_data['ENQUMENAGE'].str.replace(' ', ''), errors='coerce').fillna(0)
+            filtered_data['Recensements'] = pd.to_numeric(filtered_data['Recensement'].str.replace(' ', ''), errors='coerce').fillna(0)
+            filtered_data['Grappes Couvertes'] = pd.to_numeric(filtered_data['Nb grappes enquêtées'].str.replace(' ', ''), errors='coerce').fillna(0)
+            filtered_data['Taux Enquêtes Ménage/Recensements'] = pd.to_numeric(filtered_data['Proportion ENQUMENAGE/Recensement'].str.replace('%', ''), errors='coerce').fillna(0)
+            filtered_data['Taux de Couverture des Grappes'] = pd.to_numeric(filtered_data['Proportion de grappes enquêtées'].str.replace('%', ''), errors='coerce').fillna(0)
 
             # Générer la carte pour l'indicateur sélectionné
             title_map = {
-                'ENQUMENAGE': 'Carte des ENQUMENAGE par Province',
-                'Recensement': 'Carte des Recensements par Province',
-                'Nb grappes enquêtées': 'Carte des Grappes Enquêtées par Province',
-                'Proportion ENQUMENAGE/Recensement': 'Proportion ENQUMENAGE/Recensement par Province',
-                'Proportion de grappes enquêtées': 'Proportion de Grappes Enquêtées par Province'
-            }
+                'Enquêtes Ménage': 'Répartition Provinciale des Enquêtes Ménage',
+                'Recensements': 'Répartition Provinciale des Recensements',
+                'Grappes Couvertes': 'Répartition Provinciale des Grappes Enquêtées',
+                'Taux Enquêtes Ménage/Recensements': 'Répartition Provinciale du Taux Enquêtes/Recensements',
+                'Taux de Couverture des Grappes': 'Répartition Provinciale du Taux de Couverture des Grappes'
+                }
 
             fig = generate_province_map(filtered_data, indicateur, title_map[indicateur])
             st.plotly_chart(fig)
 
+
+    elif level == "Zoom Cercles":
+        # Analyse par cercles
+        combined_data['cldh_label'] = combined_data['cldh_label'].astype(str).str.strip()
+        circles_data['cldh_label'] = circles_data['cldh_label'].astype(str).str.strip()
+
+        # Agrégation des données par cercle
+        circle_data = combined_data.groupby('cldh_label').agg(
+            expra_1=('expra', lambda x: (x == 1).sum()),
+            expra_0=('expra', lambda x: (x == 0).sum()),
+            unique_grappe=('grappe', pd.Series.nunique)
+        ).reset_index()
+
+        # Fusion avec circles_data
+        circle_data = circle_data.merge(circles_data, left_on='cldh_label', right_on='cldh_label')
+
+        # Fusion avec combined_data pour obtenir la province
+        circle_data = circle_data.merge(combined_data[['cldh_label', 'province_label']].drop_duplicates(), on='cldh_label', how='left')
+
+        # Suppression des doublons de colonnes et renommage
+        if 'province_label_x' in circle_data.columns and 'province_label_y' in circle_data.columns:
+            circle_data['province_label'] = circle_data['province_label_x']
+            circle_data = circle_data.drop(columns=['province_label_x', 'province_label_y'])
+
+        # Calcul des ratios et pourcentages
+        circle_data['ratio_expra'] = (circle_data['expra_1'] / circle_data['expra_0']) * 100
+        circle_data['percent_unique_grappe'] = (circle_data['unique_grappe'] / circle_data['nb_grappe']) * 100
+        circle_data = circle_data.replace([np.inf, -np.inf], np.nan).fillna(0)
+
+        # Sélectionner les colonnes à afficher
+        circle_data = circle_data[['cldh_label', 'province_label', 'expra_1', 'expra_0', 'unique_grappe', 'nb_grappe', 'ratio_expra', 'percent_unique_grappe']]
+        circle_data.columns = ['Cercle', 'Province', 'ENQUMENAGE', 'Recensement', 'Nb grappes enquêtées', 'Nb grappes total', 'Proportion ENQUMENAGE/Recensement', 'Proportion de grappes enquêtées']
+
+        # Formatage des colonnes
+        circle_data['ENQUMENAGE'] = circle_data['ENQUMENAGE'].apply(lambda x: f"{x:,}".replace(",", " "))
+        circle_data['Recensement'] = circle_data['Recensement'].apply(lambda x: f"{x:,}".replace(",", " "))
+        circle_data['Nb grappes enquêtées'] = circle_data['Nb grappes enquêtées'].apply(lambda x: f"{x:,}".replace(",", " "))
+        circle_data['Nb grappes total'] = circle_data['Nb grappes total'].apply(lambda x: f"{x:,}".replace(",", " "))
+        circle_data['Proportion ENQUMENAGE/Recensement'] = circle_data['Proportion ENQUMENAGE/Recensement'].apply(lambda x: f"{x:.2f}%")
+        circle_data['Proportion de grappes enquêtées'] = circle_data['Proportion de grappes enquêtées'].apply(lambda x: f"{x:.2f}%")
+
+
+        # Créer une copie profonde de circle_data
+        circle_data1 = circle_data.copy(deep=True)
+
+        # Définir les nouveaux noms de colonnes
+        new_columns = [
+            'Cercle',
+            'Province',
+            'Enquêtes Ménage',
+            'Recensements',
+            'Grappes Couvertes',
+            'Nombre Total de Grappes',
+            'Taux Enquêtes Ménage/Recensements',
+            'Taux de Couverture des Grappes'
+        ]
+
+        # Créer un dictionnaire de mapping entre anciens et nouveaux noms
+        column_mapping = {
+            'Cercle': 'Cercle',
+            'Province': 'Province',
+            'ENQUMENAGE': 'Enquêtes Ménage',
+            'Recensement': 'Recensements',
+            'Nb grappes enquêtées': 'Grappes Couvertes',
+            'Nb grappes total': 'Nombre Total de Grappes',
+            'Proportion ENQUMENAGE/Recensement': 'Taux Enquêtes Ménage/Recensements',
+            'Proportion de grappes enquêtées': 'Taux de Couverture des Grappes'
+        }
+
+        # Renommer les colonnes
+        circle_data1 = circle_data1.rename(columns=column_mapping)
+
+
+        if view == "Tableau":
+            st.subheader("Matrice Comparative des Indicateurs des Cercles")
+            st.dataframe(circle_data1)
+        
+        elif view == "Datavisualisation":
+            st.subheader("Aperçu Graphique des Indicateurs des Cercles")
+
+            # Fonction pour nettoyer et convertir les valeurs en float
+            def clean_and_convert(column):
+                return column.str.replace(' ', '').str.replace('%', '').astype(float)
+
+            # Nettoyer et convertir les colonnes en float
+            circle_data['ENQUMENAGE'] = clean_and_convert(circle_data['ENQUMENAGE'])
+            circle_data['Recensement'] = clean_and_convert(circle_data['Recensement'])
+            circle_data['Nb grappes enquêtées'] = clean_and_convert(circle_data['Nb grappes enquêtées'])
+            circle_data['Nb grappes total'] = clean_and_convert(circle_data['Nb grappes total'])
+            circle_data['Proportion ENQUMENAGE/Recensement'] = clean_and_convert(circle_data['Proportion ENQUMENAGE/Recensement'])
+            circle_data['Proportion de grappes enquêtées'] = clean_and_convert(circle_data['Proportion de grappes enquêtées'])
+
+            # Utiliser les valeurs nettoyées et converties pour définir les limites de l'axe y
+            y_lim_multiplier = 1.1
+
+            # Filtre pour sélectionner la province
+            provinces = ['Toutes les Provinces'] + list(circle_data['Province'].unique())
+            selected_province = st.selectbox("Choisir une Province", provinces)
+
+            # Filtre pour sélectionner l'indicateur à afficher
+            indicateur = st.selectbox(
+                "Sélectionner l'Indicateur de Suivi", 
+                [
+                    "Enquêtes Ménage",
+                    "Recensements",
+                    "Grappes Couvertes",
+                    "Nombre Total de Grappes",
+                    "Taux Enquêtes Ménage/Recensements",
+                    "Taux de Couverture des Grappes"
+                ]
+            )
+
+            # Filtrer les données en fonction de la province sélectionnée
+            if selected_province != 'Toutes les Provinces':
+                filtered_data = circle_data[circle_data['Province'] == selected_province]
+            else:
+                filtered_data = circle_data
+
+            # Affichage du graphique en fonction de l'indicateur sélectionné
+            if indicateur == "Enquêtes Ménage":
+                fig = px.bar(filtered_data, x='Cercle', y='ENQUMENAGE', title="Enquêtes Ménage par Cercle", labels={'ENQUMENAGE': 'ENQUMENAGE'})
+                fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
+                fig.update_layout(
+                    uniformtext_minsize=8, 
+                    uniformtext_mode='hide', 
+                    yaxis=dict(range=[0, filtered_data['ENQUMENAGE'].max() * y_lim_multiplier]),
+                    title={'x':0.35},
+                    separators=', '  # Corrigé ici
+                )
+                st.plotly_chart(fig)
+
+            elif indicateur == "Recensements":
+                fig = px.bar(filtered_data, x='Cercle', y='Recensement', title="Recensements par Cercle", labels={'Recensement': 'Recensement'})
+                fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
+                fig.update_layout(
+                    uniformtext_minsize=8, 
+                    uniformtext_mode='hide', 
+                    yaxis=dict(range=[0, filtered_data['Recensement'].max() * y_lim_multiplier]),
+                    separators=', '  # Corrigé ici
+                )
+                st.plotly_chart(fig)
+
+            elif indicateur == "Grappes Couvertes":
+                fig = px.bar(filtered_data, x='Cercle', y='Nb grappes enquêtées', title="Grappes Couvertes par Cercle", labels={'Nb grappes enquêtées': 'Nb grappes enquêtées'})
+                fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
+                fig.update_layout(
+                    uniformtext_minsize=8, 
+                    uniformtext_mode='hide', 
+                    yaxis=dict(range=[0, filtered_data['Nb grappes enquêtées'].max() * y_lim_multiplier]),
+                    separators=', '  # Corrigé ici
+                )
+                st.plotly_chart(fig)
+
+            elif indicateur == "Nombre Total de Grappes":
+                fig = px.bar(filtered_data, x='Cercle', y='Nb grappes total', title="Nombre Total de Grappes par Cercle", labels={'Nb grappes total': 'Nb grappes total'})
+                fig.update_traces(texttemplate='%{y:,.0f}', textposition='outside')
+                fig.update_layout(
+                    uniformtext_minsize=8, 
+                    uniformtext_mode='hide', 
+                    yaxis=dict(range=[0, filtered_data['Nb grappes total'].max() * y_lim_multiplier]),
+                    separators=', '  # Corrigé ici
+                )
+                st.plotly_chart(fig)
+
+            elif indicateur == "Taux Enquêtes Ménage/Recensements":
+                fig = px.bar(filtered_data, x='Cercle', y='Proportion ENQUMENAGE/Recensement', title="Taux Enquêtes Ménage/Recensements par Cercle", labels={'Proportion ENQUMENAGE/Recensement': 'Proportion ENQUMENAGE/Recensement (%)'})
+                fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
+                fig.update_layout(
+                    uniformtext_minsize=8, 
+                    uniformtext_mode='hide', 
+                    yaxis=dict(range=[0, filtered_data['Proportion ENQUMENAGE/Recensement'].max() * y_lim_multiplier]),
+                    separators=', '  # Ajouté ici
+                )
+                st.plotly_chart(fig)
+
+            elif indicateur == "Taux de Couverture des Grappes":
+                fig = px.bar(filtered_data, x='Cercle', y='Proportion de grappes enquêtées', title="Taux de Couverture des Grappes par Cercle", labels={'Proportion de grappes enquêtées': 'Proportion de grappes enquêtées (%)'})
+                fig.update_traces(texttemplate='%{y:.2f}%', textposition='outside')
+                fig.update_layout(
+                    uniformtext_minsize=8, 
+                    uniformtext_mode='hide', 
+                    yaxis=dict(range=[0, filtered_data['Proportion de grappes enquêtées'].max() * y_lim_multiplier]),
+                    separators=', '  # Ajouté ici
+                )
+                st.plotly_chart(fig)
+
+        elif view == "Géo-intelligence":
+            st.subheader("Disponible en Zoom Régional et Provincial")
 
 # Fonction principale
 def main():
     # if not login():
     #     return
 
-    st.title("Tableau de Bord Interactif")
-    st.write("Enquete du Developement Humain aupres des menages 2024.")
+    st.title("Baromètre EDH 2024")
+    st.write("Pilotage Stratégique de l'Enquête sur le Développement Humain auprès des Ménages 2024")
     
     st.sidebar.title("Filtres")
-    niveau = st.sidebar.radio("Niveau", ["National", "Régions", "Provinces"])
-    vue = st.sidebar.radio("Vue", ["Tableau", "Graphique", "Cartographie"])
+    #niveau = st.sidebar.radio("Niveau", ["National", "Régions", "Provinces"])
+    niveau = st.sidebar.radio("Échelle d'Analyse", ["Vision Macroscopique", "Zoom Régional", 
+                                                    "Zoom Provincial", "Zoom Cercles"])
+    vue = st.sidebar.radio("Mode de Visualisation", ["Tableau", "Datavisualisation", "Géo-intelligence"])
     
     # if st.sidebar.button("Se déconnecter"):
     #     logout()
