@@ -930,7 +930,7 @@ def main():
 
     # Display the logo in the left column
     with col1:
-        st.image(logo, width=150)
+        st.image(logo, width=100)
 
     # You can use the right column for a title or other content
     with col2:
